@@ -19,26 +19,24 @@ EXCUSES = ["你说什么？", "听不清，大点声。", "这边信号貌似有
 
 module.exports = (robot) ->
 
-  robot.hear /^\/s2t$/i, (res) ->
+  robot.respond /s2t/i, (res) ->
     s2t(robot, res)
 
-  robot.hear /^\/繁体$/i, (res) ->
-    s2t(robot, res)
-
-  robot.respond /\/?s2t/i, (res) ->
-    s2t(robot, res)
-
-  robot.respond /\/?繁体/i, (res) ->
+  robot.respond /繁体/i, (res) ->
     s2t(robot, res)
 
 s2t = (robot, res) ->
   res.message.done = true
   s = robot.lastMsg(res.message.user, 5)
   if s and s.text
-    if s.text.length > 4
-      res.reply "好的，我马上把 \"#{s.text.substring(0, 4)}...\" 转换成繁体"
-    else
-      res.reply "好的，我马上把 \"#{s.text}\" 转换成繁体"
+    t = setTimeout () ->
+      if s.text.length > 4
+        res.reply "好的，我这就把 \"#{s.text.substring(0, 4)}...\" 转换成繁体"
+      else
+        res.reply "好的，我正在把 \"#{s.text}\" 转换成繁体"
+    , 700
+    
+    console.log("s2t #{s.text}")
     request.post {
       url: "http://opencc.byvoid.com/convert", 
       form: {
@@ -46,11 +44,12 @@ s2t = (robot, res) ->
         config: "s2twp.json"
       }
       }, (err, response, body) ->
+        clearTimeout t
         if err or response.statusCode isnt 200
           console.log(err + "code: " + response.statusCode + " " + body )
           res.reply(res.random(EXCUSES))
         else
-          res.reply(body)
+          res.send(body)
   else
     res.reply("我居然没找到要转换的内容。")
     

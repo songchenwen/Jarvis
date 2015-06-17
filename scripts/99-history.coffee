@@ -13,16 +13,19 @@
 module.exports = (robot) ->
 
   robot.catchAll (res) ->
-  	if (!robot.history)
-  		robot.history = []
+    if (!robot.history)
+      robot.history = []
 
-  	item = {
-  		message : res.message,
-  		time : new Date()
-  	}
-  	
-  	if (robot.history.push(item) > 300)
-  		robot.history.shift()
+    item = {
+      message : res.message,
+      time : new Date()
+    }
+
+    if item.message.text.indexOf(robot.name) is 0
+      item.message.text = item.message.text.substring(robot.name.length).trim()
+
+    if (robot.history.push(item) > 300)
+      robot.history.shift()
 
   robot.lastMsg = (user, min) ->
   	if (robot.history and robot.history.length > 0)
