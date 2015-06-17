@@ -15,6 +15,8 @@ module.exports = (robot) ->
   robot.catchAll (res) ->
     if (!robot.history)
       robot.history = []
+    
+    return if !res.message or !res.message.text
 
     item = {
       message : res.message,
@@ -24,7 +26,7 @@ module.exports = (robot) ->
     if item.message.text.indexOf(robot.name) is 0
       item.message.text = item.message.text.substring(robot.name.length).trim()
 
-    if (robot.history.push(item) > 300)
+    if (robot.history.push(item) > 1000)
       robot.history.shift()
 
   robot.lastMsg = (user, min) ->
@@ -33,4 +35,4 @@ module.exports = (robot) ->
   	return null
 
 checkMsg = (item, user, min) ->
-	return item.message.user.name == user.name and item.message.user.room == user.room and (new Date().getTime() - item.time.getTime()) < min * 60 * 1000
+	return (!user.name or item.message.user.name == user.name) and (!user.room or item.message.user.room == user.room) and (new Date().getTime() - item.time.getTime()) < min * 60 * 1000

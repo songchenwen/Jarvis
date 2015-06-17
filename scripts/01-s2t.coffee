@@ -36,7 +36,6 @@ s2t = (robot, res) ->
         res.reply "好的，我正在把 \"#{s.text}\" 转换成繁体"
     , 700
     
-    console.log("s2t #{s.text}")
     request.post {
       url: "http://opencc.byvoid.com/convert", 
       form: {
