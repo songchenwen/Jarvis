@@ -7,8 +7,6 @@
 # Commands:
 #   hubot s2t - 简 -> 繁
 #   hubot 繁体 - 简 -> 繁
-#   /s2t 简 -> 繁
-#   /繁体 简 -> 繁
 #
 # Author:
 #   songchenwen
