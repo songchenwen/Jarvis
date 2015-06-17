@@ -41,6 +41,32 @@ module.exports = (robot) ->
       else
         return null
 
+  robot.postRawMsg = (channelName, rawMsg) ->
+    return null unless rawMsg
+    if robot.isSlack()
+      client = robot.adapter.client
+      return null unless client
+      channel = client.getChannelGroupOrDMByName channelName
+      return null unless channel
+      rawMsg.unfurl_links = true
+      return robot.lastSentMsg channel.postMessage rawMsg
+    else
+      return null
+
+  robot.roomHasActivity = (room, millisec) ->
+    return false unless room
+    return true unless millisec > 0
+    if robot.isSlack()
+      history = robot.adapter.client.getChannelGroupOrDMByName(room).getHistory()
+      return false unless history
+      now = new Date().getTime()
+      before = now - millisec
+      for own timestamp, obj of history
+        return true if timestamp * 1000 > before and obj.hasOwnProperty('type') and obj.type == 'message'
+      return false
+    else
+      return !!(robot.lastMsg({room: room}, millisec / 1000 / 60))
+
   robot.respond /dm/i, (res) ->
     if robot.isSlack()
       robot.dm res.message.user.name, "我在这"
