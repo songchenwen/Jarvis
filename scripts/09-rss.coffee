@@ -329,7 +329,7 @@ module.exports = (robot) ->
 
   robot.respond /((feed|rss)\s+me)|(show\s+(feed|rss))|((看看|显示)订阅)|(订阅的(文章|内容))|刷新订阅/i, (res) ->
     if FeedList.refreshing
-      loadingMsg = robot.lastSentMsg res.reply "我已经在为您准备新文章了..."
+      loadingMsg = robot.lastSentMsg(res.reply("我已经在为您准备新文章了..."))
       if loadingMsg
         setTimeout(->
           loadingMsg.deleteMessage()
@@ -339,7 +339,7 @@ module.exports = (robot) ->
     tmp = Fetch_Interval
     Fetch_Interval = 0
 
-    loadingMsg = robot.lastSentMsg res.reply "稍等一下..."
+    loadingMsg = robot.lastSentMsg(res.reply("稍等一下..."))
     limit_in_room = res.message.user.room.trim()
     FeedList.refresh () ->
       limit_in_room = null
