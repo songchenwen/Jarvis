@@ -55,7 +55,7 @@ module.exports = (robot) ->
 
   robot.roomHasActivity = (room, millisec) ->
     return false unless room
-    return true unless millisec > 0
+    return false unless millisec > 0
     if robot.isSlack()
       history = robot.adapter.client.getChannelGroupOrDMByName(room).getHistory()
       return false unless history

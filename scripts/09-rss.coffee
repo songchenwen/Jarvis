@@ -45,6 +45,8 @@ class FeedList
       if changed
         @save()
 
+  @refreshing = false
+
   save: () ->
     list = []
     for feed in @feeds
@@ -77,7 +79,7 @@ class FeedList
       i = 0
       for i in [(@feeds.length - 1)..0]
         if @feeds[i].room == room and @feeds[i].url == feed.url
-          console.log "deleting feed #{feed.url} at #{i}"
+          @robot.logger.info "RSS: deleting feed #{feed.url} at #{i}"
           @feeds.splice(i, 1) 
       @save()
       return true
@@ -91,35 +93,43 @@ class FeedList
   feedsForRoom: (room) ->
     return (feed for feed in @feeds when feed.room == room)
 
-  refresh: ()->
+  refresh: (callback)->
     t = this
-    setTimeout(->
-      t.refresh()
-    , Fetch_Interval)
+    if Fetch_Interval > 0
+      setTimeout(->
+        t.refresh()
+      , Fetch_Interval)
 
-    return if @feeds.length == 0
+    if @feeds.length == 0 || @refreshing
+      callback() if callback
+      return
+
+    @refreshing = true
     hash = {}
     async.each(@feeds, (f, cb) ->
       if !f.shouldRefresh()
         cb()
         return
-      console.log "RSS begin fetching #{f.url} for #{f.room}"
+      t.robot.logger.info "RSS: begin fetching #{f.url} for #{f.room}"
       f.newItems (err, items) -> 
         if err
-           console.log err 
+           t.robot.logger.warning "RSS: #{err} for new items #{f.url}" 
            cb()
            return
         return cb() unless items and items.length > 0
-        console.log "got #{items.length} new items from #{f.url} in #{f.room}"
+        t.robot.logger.info "RSS: got #{items.length} new items from #{f.url} in #{f.room}"
         hash[f.room] = [] unless hash.hasOwnProperty(f.room)
         hash[f.room].push item for item in items
         cb()
     , (err) ->
       if err
-        console.log err
+        t.robot.logger.warning "RSS: #{err} at feedlist refresh callback"
       for own room, items of hash
         t.sendItems room, items
       t.save()
+      if callback
+        callback()
+      t.refreshing = false
     )
 
   sendItems: (room, items) ->
@@ -127,7 +137,7 @@ class FeedList
     items = items.sort (a, b) ->
       return  b.getDate().getTime() - a.getDate().getTime()
 
-    console.log "send #{items.length} rss items to #{room}"
+    @robot.logger.info "RSS: send #{items.length} items to #{room}"
     if not @robot.isSlack()
       for item in items
         @robot.messageRoom room, "#{item.getTitle()}\n#{getUrl(item.feedDomain, item.getPermalink())}"
@@ -171,52 +181,41 @@ class Feed
             item.feedDomain = domain
         cb(null, newItems)
       catch e
-        console.log(e)
+        f.robot.logger.warning "RSS: #{e} in feed new items callback for #{f.url}"
         cb(e)
 
   shouldRefresh:() ->
     if !@robot.roomHasActivity(@room, Fetch_Interval)
-      console.log "##{@room} has NOT activity in #{Fetch_Interval / 1000 } secs"
+      @robot.logger.info "RSS: ##{@room} has NOT activity in #{Fetch_Interval / 1000 } secs"
       return true
-    console.log "##{@room} has activity in #{Fetch_Interval / 1000 } secs"  
+    @robot.logger.info "RSS: ##{@room} has activity in #{Fetch_Interval / 1000 } secs"  
     return false
 
-module.exports = (robot) ->
-  FeedList = new FeedList robot
+getUrl = (domain, path) ->
+  return path unless domain and path
+  if path.indexOf('/') == 0
+    return domain + path
+  return path
 
-  setTimeout(->
-    FeedList.refresh()
-  , Fetch_Interval)
+getDomain = (line) ->
+  url = URL.parse(line);
+  if url && url.hostname && url.hostname.split('.').length > 1
+    url.protocol = 'http:' unless url.protocol
+    return url.protocol + '//' + url.hostname;
+  return null;
 
-  robot.respond /rss\s+(add|添加)\s+([^\s]+[http|https|atom|feed]:\/\/\S+)/i, (res) ->
-    addFeed(res, FeedList)
-
-  robot.respond /rss\s+(remove|删除)\s+([^\s]+)/i, (res) ->
-    return unless res.match.length > 2 and res.message.user.room
-    url = res.match[2]
-    if FeedList.removeFeed url, res.message.user.room
-      res.reply "删掉咯"
+findFeedTitle = (feed) ->
+  if feed.hasOwnProperty 'feed'
+    return findFeedTitle feed.feed
+  else
+    if feed.hasOwnProperty 'title'
+      return feed.title
     else
-      res.reply "呃...没找到那个 RSS Feed"
+      return null
 
-  robot.respond /rss\s+(clear|清空)/i, (res) ->
-    return unless res.message.user.room
-    FeedList.clearFeed res.message.user.room
-    res.reply "没有文章看了"
-
-  robot.respond /rss\s+(list|列表)/i, (res) ->
-    return unless res.message.user.room
-    feeds = FeedList.feedsForRoom res.message.user.room
-    if feeds and feeds.length > 0
-      msg = " "
-      msg += "\n#{index} : #{feeds[index].url}" for index in [0..(feeds.length - 1)]
-      res.reply msg
-    else
-      res.reply "##{res.message.user.room} 里还没有订阅 RSS Feed 哦"
-
-addFeed = (res, feedList) ->
-  return unless res.match.length > 2 and res.message.user.room
-  url = res.match[2]
+addFeed = (res, feedList, index) ->
+  return unless res.match.length > index and res.message.user.room
+  url = res.match[index]
   robot = feedList.robot
   name = res.message.user.name
   feed = new Feed robot, url, res.message.user.room
@@ -225,7 +224,7 @@ addFeed = (res, feedList) ->
   feed.newItems (err, items) ->
     if err or !items or items.length == 0
       if err
-        console.log err
+        robot.logger.warning "RSS: #{err} at newly add feed"
       msg = "<@#{name}>: 刚才那个 RSS Feed 貌似有问题"
       if loadingMsg
         loadingMsg.updateMessage msg
@@ -255,24 +254,79 @@ addFeed = (res, feedList) ->
     else
       res.send msg
 
-getUrl = (domain, path) ->
-  return path unless domain and path
-  if path.indexOf('/') == 0
-    return domain + path
-  return path
-
-getDomain = (line) ->
-  url = URL.parse(line);
-  if url && url.hostname && url.hostname.split('.').length > 1
-    url.protocol = 'http:' unless url.protocol
-    return url.protocol + '//' + url.hostname;
-  return null;
-
-findFeedTitle = (feed) ->
-  if feed.hasOwnProperty 'feed'
-    return findFeedTitle feed.feed
+removeFeed = (res, feedList, index) ->
+  return unless res.match.length > index and res.message.user.room
+  url = res.match[index]
+  if feedList.removeFeed url, res.message.user.room
+    res.reply "删掉咯"
   else
-    if feed.hasOwnProperty 'title'
-      return feed.title
+    res.reply "呃...没找到那个 RSS Feed"
+
+clearFeed = (res, feedList) ->
+  return unless res.message.user.room
+  feedList.clearFeed res.message.user.room
+  res.reply "没有文章看了"
+
+module.exports = (robot) ->
+  FeedList = new FeedList robot
+
+  setTimeout(->
+    FeedList.refresh()
+  , Fetch_Interval)
+
+  robot.respond /(rss|feed|订阅)\s+(add|添加)\s+([^\s]+[http|https|atom|feed]:\/\/\S+)/i, (res) ->
+    addFeed res, FeedList, 3
+
+  robot.respond /(add|添加)\s+(rss|feed|订阅)\s+([^\s]+[http|https|atom|feed]:\/\/\S+)/i, (res) ->
+    addFeed res, FeedList, 3
+
+  robot.respond /添加订阅\s+([^\s]+[http|https|atom|feed]:\/\/\S+)/i, (res) ->
+    addFeed res, FeedList, 1
+
+  robot.respond /(rss|feed|订阅)\s+(remove|rm|delete|删除|取消)\s+([^\s]+)/i, (res) ->
+    removeFeed res, FeedList, 3
+
+  robot.respond /(remove|rm|delete|删除|取消)\s+(rss|feed|订阅)\s+([^\s]+)/i, (res) ->
+    removeFeed res, FeedList, 3
+
+  robot.respond /(取消|删除)订阅\s+([^\s]+)/i, (res) ->
+    removeFeed res, FeedList, 2
+
+  robot.respond /(rss|feed|订阅)\s+(clear|清空)/i, (res) ->
+    clearFeed res, FeedList   
+
+  robot.respond /(clear|清空)\s+(rss|feed|订阅)/i, (res) ->
+    clearFeed res, FeedList    
+
+  robot.respond /(清空订阅)/i, (res) ->
+    clearFeed res, FeedList
+
+  robot.respond /((feed|rss)\s+me)|(show\s+(feed|rss))|((看看|显示)订阅)|(订阅的(文章|内容))|刷新订阅/i, (res) ->
+    if FeedList.refreshing
+      loadingMsg = robot.lastSentMsg res.reply "我已经在为您准备新文章了..."
+      if loadingMsg
+        setTimeout(->
+          loadingMsg.deleteMessage()
+        , 5000)
+      return
+
+    tmp = Fetch_Interval
+    Fetch_Interval = 0
+
+    loadingMsg = robot.lastSentMsg res.reply "稍等一下..."
+    FeedList.refresh () ->
+      Fetch_Interval = tmp
+      if loadingMsg
+        loadingMsg.deleteMessage()
+      robot.logger.info "RSS: manual refresh finished. auto interval at #{Fetch_Interval / 1000} secs"
+      FeedList.refresh()
+
+  robot.respond /(rss|feed|订阅)\s*(list|列表)/i, (res) ->
+    return unless res.message.user.room
+    feeds = FeedList.feedsForRoom res.message.user.room
+    if feeds and feeds.length > 0
+      msg = " "
+      msg += "\n#{index} : #{feeds[index].url}" for index in [0..(feeds.length - 1)]
+      res.reply msg
     else
-      return null
+      res.reply "##{res.message.user.room} 里还没有订阅 RSS Feed 哦"
