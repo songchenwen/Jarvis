@@ -20,5 +20,8 @@
   },
   "engines": {
     "node": "0.10.x"
+  },
+  "scripts": {
+    "start": "PORT=$OPENSHIFT_NODEJS_PORT BIND_ADDRESS=$OPENSHIFT_NODEJS_IP HUBOT_HEROKU_KEEPALIVE_URL=$OPENSHIFT_APP_DNS HUBOT_HEROKU_KEEPALIVE_INTERVAL=360 bin/hubot -a slack"
   }
 }
