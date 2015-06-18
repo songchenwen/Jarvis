@@ -26,7 +26,6 @@ NodePie = require 'nodepie'
 URL = require 'url'
 
 Fetch_Interval = 15 * 1000.0 * 60.0
-limit_in_room = null
 
 class FeedList
   constructor: (@robot) ->
@@ -113,7 +112,7 @@ class FeedList
   feedsForRoom: (room) ->
     return (feed for feed in @feeds when feed.room == room)
 
-  refresh: (callback)->
+  refresh: (limit_in_room, callback)->
     t = this
     if Fetch_Interval > 0
       setTimeout(->
@@ -127,13 +126,13 @@ class FeedList
     @refreshing = true
     hash = {}
     async.each(@feeds, (f, cb) ->
-      if !f.shouldRefresh()
-        cb()
-        return
       if limit_in_room
         if limit_in_room.trim() != f.room.trim()
           cb()
           return
+      if !f.shouldRefresh()
+        cb()
+        return
 
       t.robot.logger.info "RSS: begin fetching #{f.url} for #{f.room}"
       f.newItems (err, items) -> 
@@ -154,7 +153,6 @@ class FeedList
       t.save()
       if callback
         callback()
-      limit_in_room = null
       t.refreshing = false
     )
 
@@ -342,9 +340,8 @@ module.exports = (robot) ->
     Fetch_Interval = 0
 
     loadingMsg = robot.lastSentMsg(res.reply("稍等一下..."))
-    limit_in_room = res.message.user.room.trim()
-    FeedList.refresh () ->
-      limit_in_room = null
+
+    FeedList.refresh res.message.user.room, () ->
       Fetch_Interval = tmp
       if loadingMsg
         loadingMsg.deleteMessage()
