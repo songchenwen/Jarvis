@@ -26,6 +26,7 @@ NodePie = require 'nodepie'
 URL = require 'url'
 
 Fetch_Interval = 15 * 1000.0 * 60.0
+limit_in_room = null
 
 class FeedList
   constructor: (@robot) ->
@@ -37,6 +38,12 @@ class FeedList
       changed = false
       for feed in @robot.brain.data.feedList
         if !@robot.isSlack() or @robot.adapter.client.getChannelGroupOrDMByName(feed.room)
+          duplicated = false
+          duplicated = true for f in @feeds when f.url == feed.url and f.room == feed.room
+          if duplicated
+            changed = true
+            continue
+          
           f = new Feed @robot, feed.url, feed.room
           if typeof feed.lastUpdateDate == 'number'
             f.lastUpdateDate = new Date(feed.lastUpdateDate)
@@ -121,6 +128,11 @@ class FeedList
       if !f.shouldRefresh()
         cb()
         return
+      if limit_in_room
+        if limit_in_room.trim() != f.room.trim()
+          cb()
+          return
+
       t.robot.logger.info "RSS: begin fetching #{f.url} for #{f.room}"
       f.newItems (err, items) -> 
         if err
@@ -140,6 +152,7 @@ class FeedList
       t.save()
       if callback
         callback()
+      limit_in_room = null
       t.refreshing = false
     )
 
@@ -169,6 +182,8 @@ class FeedList
 
 class Feed
   constructor: (@robot, @url, @room) ->
+    @url = @url.trim()
+    @room = @room.trim()
     @lastUpdateDate = new Date(0)
 
   @lastUpdateDate = new Date()
@@ -325,7 +340,9 @@ module.exports = (robot) ->
     Fetch_Interval = 0
 
     loadingMsg = robot.lastSentMsg res.reply "稍等一下..."
+    limit_in_room = res.message.user.room.trim()
     FeedList.refresh () ->
+      limit_in_room = null
       Fetch_Interval = tmp
       if loadingMsg
         loadingMsg.deleteMessage()
