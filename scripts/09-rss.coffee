@@ -57,6 +57,8 @@ class FeedList
             changed = true
             f.lastUpdateDate = new Date() 
 
+          now = new Date().getTime()
+          @robot.logger.info "RSS: #{f.url} in ##{f.room} last updated #{(now - f.lastUpdateDate.getTime())/1000/60} mins ago"
           @feeds.push f
         else
           changed = true
