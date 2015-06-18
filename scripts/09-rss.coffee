@@ -38,7 +38,18 @@ class FeedList
       for feed in @robot.brain.data.feedList
         if !@robot.isSlack() or @robot.adapter.client.getChannelGroupOrDMByName(feed.room)
           f = new Feed @robot, feed.url, feed.room
-          f.lastUpdateDate = feed.lastUpdateDate
+          if typeof feed.lastUpdateDate == 'number'
+            f.lastUpdateDate = new Date(feed.lastUpdateDate)
+          else if typeof feed.lastUpdateDate == 'string'
+            try
+              f.lastUpdateDate = new Date.parse(feed.lastUpdateDate)
+              changed = true
+            catch e    
+
+          if not f.lastUpdateDate
+            changed = true
+            f.lastUpdateDate = new Date() 
+
           @feeds.push f
         else
           changed = true
@@ -50,7 +61,7 @@ class FeedList
   save: () ->
     list = []
     for feed in @feeds
-      list.push {url: feed.url, room: feed.room, lastUpdateDate: feed.lastUpdateDate}
+      list.push {url: feed.url, room: feed.room, lastUpdateDate: feed.lastUpdateDate.getTime()}
     @robot.brain.data.feedList = list
 
   addFeed: (feed) ->
