@@ -10,13 +10,11 @@
 # Author:
 #   songchenwen
 
-cp = require 'child_process'
+cp = require 'child_pty'
 
 updatingMsgTimeNeeded = 4000
 
 module.exports = (robot) ->
-
-  robot.logger.info "stdout is tty #{process.stdout.isTTY}"
 
   robot.respond /ping\s+([^\s]+)\s*$/i, (res) ->
     domain = res.match[1]
@@ -41,13 +39,10 @@ module.exports = (robot) ->
     robot.logger.info "PING: begin ping #{domain}"
 
     ping.stdout.on 'data', (data) ->
+      data = data.toString()
+      data = data.replace('\r\n', '\n')
+      data = data.replace('\n\r', '\n')
       robot.logger.info "PING: #{data}"
-      msg += data
-      if reply
-        reply.updateMessage(msg + "```")
-
-    ping.stderr.on 'data', (data) ->
-      robot.logger.info "PING: err: #{data}"
       msg += data
       if reply
         reply.updateMessage(msg + "```")

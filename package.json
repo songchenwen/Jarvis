@@ -6,6 +6,7 @@
   "description": "A simple helpful robot for your Company",
   "dependencies": {
     "async": "^1.2.1",
+    "child_pty": "^1.0.0",
     "hubot": "^2.13.2",
     "hubot-diagnostics": "0.0.1",
     "hubot-google-images": "^0.1.5",
