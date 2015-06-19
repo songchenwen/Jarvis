@@ -172,7 +172,6 @@ testUrl = (url, cb) ->
     console.log "DEPLOY: test url err: #{err}, stdout: #{stdout}, stderr: #{stderr}"
     cb(err) if cb
 
-
 getUpdateUrls = (robot) ->
   urls = robot.brain.data.updateUrls
   if !Array.isArray(urls)
