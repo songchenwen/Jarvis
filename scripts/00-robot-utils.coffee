@@ -67,6 +67,18 @@ module.exports = (robot) ->
     else
       return !!(robot.lastMsg({room: room}, millisec / 1000 / 60))
 
+  robot.usersInRoom = (room) ->
+    return [] unless robot.isSlack()
+    channel = robot.adapter.client.getChannelGroupOrDMByName(room)
+    result = []
+    if !channel.members
+      result.push room if robot.adapter.client.getUserByName(room)
+      return result
+    for u in channel.members
+      u = robot.adapter.client.getUserByID(u)
+      result.push u.name unless u.is_bot
+    return result
+
   robot.respond /dm/i, (res) ->
     if robot.isSlack()
       robot.dm res.message.user.name, "我在这"

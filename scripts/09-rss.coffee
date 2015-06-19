@@ -30,6 +30,7 @@ Fetch_Interval = 15 * 1000.0 * 60.0
 class FeedList
   constructor: (@robot) ->
     @feeds = []
+    @refreshing = false
     
     @robot.brain.on 'loaded', =>
       @robot.brain.data.feedList = [] unless @robot.brain.data.feedList
@@ -63,8 +64,6 @@ class FeedList
           changed = true
       if changed
         @save()
-
-  @refreshing = false
 
   save: () ->
     list = []
