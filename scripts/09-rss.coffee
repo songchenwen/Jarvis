@@ -294,41 +294,44 @@ clearFeed = (res, feedList) ->
   res.reply "没有文章看了"
 
 module.exports = (robot) ->
-  FeedList = new FeedList robot
+  if feedList
+    feedList.robot = robot
+  else
+    feedList = new FeedList robot
 
   setTimeout(->
-    FeedList.refresh()
+    feedList.refresh()
   , Fetch_Interval)
 
   robot.respond /(rss|feed|订阅)\s+(add|添加)\s+([^\s]+[http|https|atom|feed]:\/\/\S+)/i, (res) ->
-    addFeed res, FeedList, 3
+    addFeed res, feedList, 3
 
   robot.respond /(add|添加)\s+(rss|feed|订阅)\s+([^\s]+[http|https|atom|feed]:\/\/\S+)/i, (res) ->
-    addFeed res, FeedList, 3
+    addFeed res, feedList, 3
 
   robot.respond /添加订阅\s+([^\s]+[http|https|atom|feed]:\/\/\S+)/i, (res) ->
-    addFeed res, FeedList, 1
+    addFeed res, feedList, 1
 
   robot.respond /(rss|feed|订阅)\s+(remove|rm|delete|删除|取消)\s+([^\s]+)/i, (res) ->
-    removeFeed res, FeedList, 3
+    removeFeed res, feedList, 3
 
   robot.respond /(remove|rm|delete|删除|取消)\s+(rss|feed|订阅)\s+([^\s]+)/i, (res) ->
-    removeFeed res, FeedList, 3
+    removeFeed res, feedList, 3
 
   robot.respond /(取消|删除)订阅\s+([^\s]+)/i, (res) ->
-    removeFeed res, FeedList, 2
+    removeFeed res, feedList, 2
 
   robot.respond /(rss|feed|订阅)\s+(clear|清空)/i, (res) ->
-    clearFeed res, FeedList   
+    clearFeed res, feedList   
 
   robot.respond /(clear|清空)\s+(rss|feed|订阅)/i, (res) ->
-    clearFeed res, FeedList    
+    clearFeed res, feedList    
 
   robot.respond /(清空订阅)/i, (res) ->
-    clearFeed res, FeedList
+    clearFeed res, feedList
 
   robot.respond /((feed|rss)\s+me)|(show\s+(feed|rss))|((看看|显示)订阅)|(订阅的(文章|内容))|刷新订阅/i, (res) ->
-    if FeedList.refreshing
+    if feedList.refreshing
       loadingMsg = robot.lastSentMsg(res.reply("我已经在为您准备新文章了..."))
       if loadingMsg
         setTimeout(->
@@ -341,16 +344,16 @@ module.exports = (robot) ->
 
     loadingMsg = robot.lastSentMsg(res.reply("稍等一下..."))
 
-    FeedList.refresh res.message.user.room, () ->
+    feedList.refresh res.message.user.room, () ->
       Fetch_Interval = tmp
       if loadingMsg
         loadingMsg.deleteMessage()
       robot.logger.info "RSS: manual refresh finished. auto interval at #{Fetch_Interval / 1000} secs"
-      FeedList.refresh()
+      feedList.refresh()
 
   robot.respond /(rss|feed|订阅)\s*(list|列表)/i, (res) ->
     return unless res.message.user.room
-    feeds = FeedList.feedsForRoom res.message.user.room
+    feeds = feedList.feedsForRoom res.message.user.room
     if feeds and feeds.length > 0
       msg = " "
       msg += "\n#{index} : #{feeds[index].url}" for index in [0..(feeds.length - 1)]
