@@ -15,13 +15,8 @@ cp = require 'child_process'
 updatingMsgTimeNeeded = 4000
 
 module.exports = (robot) ->
-  useStdbuf = false
 
-  cp.exec 'which -s stdbuf', (err, stdout, stderr) ->
-    if err
-      robot.logger.info "PING: no stdbuf"
-    else
-      robot.logger.info "PING: use stdbuf"
+  robot.logger.info "stdout is tty #{process.stdout.isTTY}"
 
   robot.respond /ping\s+([^\s]+)\s*$/i, (res) ->
     domain = res.match[1]
@@ -42,12 +37,8 @@ module.exports = (robot) ->
         msg = "```"
 
     beginTime = new Date().getTime()
-    ping = null
-    if useStdbuf
-      ping = cp.spawn 'stdbuf', ['ping', '-c', '5', "#{domain}"]
-    else
-      ping = cp.spawn 'ping', ['-c', '5', "#{domain}"]
-    robot.logger.info "PING: #{domain}"
+    ping = cp.spawn 'ping', ['-c', '5', "#{domain}"]
+    robot.logger.info "PING: begin ping #{domain}"
 
     ping.stdout.on 'data', (data) ->
       robot.logger.info "PING: #{data}"
@@ -72,7 +63,7 @@ module.exports = (robot) ->
           if hasData
             reply.updateMessage(msg + "```")
           else
-            reply.updateMessage(msg)
+            reply.updateMessage(msg.substring(0, 0 - '```'.length))
       if reply
         timeUsed = new Date().getTime() - beginTime 
         if timeUsed < updatingMsgTimeNeeded
@@ -81,7 +72,7 @@ module.exports = (robot) ->
             if hasData
               reply.updateMessage(msg + "```")
             else
-              reply.updateMessage(msg)
+              reply.updateMessage(msg.substring(0, 0 - '```'.length))
           , updatingMsgTimeNeeded - timeUsed)
       else
         res.send msg
