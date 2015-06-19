@@ -16,7 +16,7 @@ module.exports = (robot) ->
   listWords = '(ls|list|show)'
   listReg = "(#{listWords}\\s+update\\s+#{srcWords}|update\\s+#{srcWords}\\s+#{listWords}|update\\s+#{listWords}\\s+#{srcWords})"
   updatePrefix = "(update\\s+(yourself\\s+)?(from|via|with|to))"
-  updateDefault = "(update\\s+(yourself|now)|self\\s+update)"
+  updateDefault = "(update\\s+(yourself|now|yourself\\s+now)|self\\s+update)"
 
   robot.respond regex(addPrefix, namePart, pathPart),  (res) -> addSrc(robot, res, res.match[5], path2https(res.match[6]))
   robot.respond regex(addPrefix, pathPart),            (res) -> addSrc(robot, res, null,         path2https(res.match[5]))
@@ -99,6 +99,10 @@ reallyDoUpdate = (robot, res, name, url) ->
   log = '```'
   logMsg = robot.lastSentMsg(res.send(log))
   p = exec "sh #{updateScript}", options, (err, stdout, stderr) ->
+    delete options.env.GIT_ASKPASS
+    delete options.env.UPDATE_URL
+    delete options.env.UPDATE_DIR
+    delete options.env.GIT_REPO_PATH
     console.log "DEPLOY: update err: #{err}, stdout: #{stdout}, stderr: #{stderr}"
     m = "#{user}: 从 `#{represent}` 更新成功"
     if err
