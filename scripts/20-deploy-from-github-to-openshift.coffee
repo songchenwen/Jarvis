@@ -54,7 +54,7 @@ module.exports = (robot) ->
     robot.logger.info "DEPLOY: found a pending update #{pendingUpdate.commit.substring(0, 7)}"
     pendingUpdate.finish(robot)
     currentCommit = currentCommitHash()
-    robot.logger.info "DEPLOY: updated from #{pendingUpdate.commit.substring(0, 7)} to #{currentCommit}.substring(0, 7)"
+    robot.logger.info "DEPLOY: updated from #{pendingUpdate.commit.substring(0, 7)} to #{currentCommit.substring(0, 7)}"
     if currentCommit is pendingUpdate.commit
       robot.messageRoom pendingUpdate.room, "<@#{pendingUpdate.username}>: 我好像没更新成功."
       return
@@ -64,6 +64,7 @@ module.exports = (robot) ->
     robot.postRawMsg pendingUpdate.room, {
         username: robot.name,
         as_user: true,
+        unfurl_links: false,
         text: "<@#{pendingUpdate.username}>: 我更新成功了. \n> From `#{from}` to `#{to}` on `#{url}`"
       }
 
