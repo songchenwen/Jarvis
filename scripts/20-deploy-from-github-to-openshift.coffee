@@ -52,7 +52,9 @@ module.exports = (robot) ->
     return unless pendingUpdate
     pendingUpdate.finish(robot)
     currentCommit = currentCommitHash()
-    return if currentCommit is pendingUpdate.commit
+    if currentCommit is pendingUpdate.commit
+      robot.messageRoom pendingUpdate.room, "<@#{pendingUpdate.username}>: 我好像没更新成功."
+      return
     url = pendingUpdate.urlName(robot)
     from = pendingUpdate.commitName()
     to = pendingUpdate.commitName(currentCommit)
