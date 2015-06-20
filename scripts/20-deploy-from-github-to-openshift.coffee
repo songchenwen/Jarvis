@@ -56,7 +56,7 @@ module.exports = (robot) ->
     url = pendingUpdate.urlName(robot)
     from = pendingUpdate.commitName()
     to = pendingUpdate.commitName(currentCommit)
-    robot.messageRoom pendingUpdate.room, "<@#{pendingUpdate.username}>: 我更新成功了. \n> From ` #{from} ` to ` #{to} ` on ` #{url} ` "
+    robot.messageRoom pendingUpdate.room, "<@#{pendingUpdate.username}>: 我更新成功了. \n> From #{from} to #{to} on #{url} "
 
 updateFrom = (robot, res, name, url) -> 
   if !process.env.OPENSHIFT_APP_NAME
@@ -291,10 +291,10 @@ class PendingUpdate
     return PendingUpdate.commitName @url, commit
 
   urlName: (robot) ->
-    return @url unless robot.brain.data
+    return "`#{@url}`" unless robot.brain.data
     urls = getUpdateUrls(robot)
     return "<#{urls[i].url}|#{urls[i].name}>" for i in [0..(urls.length - 1)] when urls[i].url is @url
-    return @url
+    return "`#{@url}`"
 
   save: (robot) ->
     robot.logger.info "DEPLOY: save penddingUpdate #{@room} #{@username} #{@url} #{@commit}"
@@ -321,5 +321,5 @@ class PendingUpdate
       url = url.replace(/\.git[\/]?$/, '')
       url = url + '/commit/' + commit
       return "<#{url}|#{commit.substring(0, 7)}>"
-    return commit.substring(0, 7)
+    return "`#{commit.substring(0, 7)}`" 
 
