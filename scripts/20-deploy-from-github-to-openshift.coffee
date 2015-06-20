@@ -51,19 +51,23 @@ module.exports = (robot) ->
   clientConnected = false
   robot.brain.on 'loaded', =>
     brainLoaded = true
+    robot.logger.info "DEPLOY: brain loaded"
     checkPendingUpdate()
 
   robot.adapter.on 'connected', =>
     clientConnected = true
+    robot.logger.info "DEPLOY: adapter connected"
     checkPendingUpdate()
 
   checkPendingUpdate = () ->
     return unless brainLoaded and clientConnected
+    robot.logger.info "DEPLOY: checking for pending update"
     pendingUpdate = PendingUpdate.load(robot)
     return unless pendingUpdate
     robot.logger.info "DEPLOY: found a pending update #{pendingUpdate.commit.substring(0, 7)}"
     pendingUpdate.finish(robot)
     currentCommit = currentCommitHash()
+    robot.logger.info "DEPLOY: updated from #{pendingUpdate.commit.substring(0, 7)} to #{currentCommit}.substring(0, 7)"
     if currentCommit is pendingUpdate.commit
       robot.messageRoom pendingUpdate.room, "<@#{pendingUpdate.username}>: 我好像没更新成功."
       return
