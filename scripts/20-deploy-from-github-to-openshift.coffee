@@ -47,20 +47,7 @@ module.exports = (robot) ->
     return unless pendingUpdate
     robot.messageRoom pendingUpdate.room, "<@#{pendingUpdate.username}>: 我需要先关闭一下自己."
 
-  brainLoaded = false
-  clientConnected = false
   robot.brain.on 'loaded', =>
-    brainLoaded = true
-    robot.logger.info "DEPLOY: brain loaded"
-    checkPendingUpdate()
-
-  robot.adapter.on 'connected', =>
-    clientConnected = true
-    robot.logger.info "DEPLOY: adapter connected"
-    checkPendingUpdate()
-
-  checkPendingUpdate = () ->
-    return unless brainLoaded and clientConnected
     robot.logger.info "DEPLOY: checking for pending update"
     pendingUpdate = PendingUpdate.load(robot)
     return unless pendingUpdate
