@@ -6,7 +6,7 @@ updateScript = "#{__dirname}/../src/deploy-from-github-to-openshift.sh"
 updateCwd = "#{__dirname}/../"
 updateRepoDir = 'UpdateRepo'
 
-module.exports = (robot) ->
+module.exports = (robot) ->  
   updateRepoDir = robot.name + updateRepoDir
 
   srcWords = '(source|src|remote|from|sources|srcs|remotes)'
@@ -307,6 +307,7 @@ class PendingUpdate
       }
 
   finish: (robot) ->
+    robot.logger.info "DEPLOY: finish pendingUpdate #{@room} #{@username} #{@url} #{@commit}"
     if robot.brain.data
       robot.brain.data.pendingUpdate = null
 
