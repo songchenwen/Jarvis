@@ -1,10 +1,14 @@
 
-exec = require('child_process').exec
+cp = require('child_process')
+exec = cp.exec
+execSync = cp.execSync
 updateScript = "#{__dirname}/../src/deploy-from-github-to-openshift.sh"
 updateCwd = "#{__dirname}/../"
-updateRepoDir = 'updateRepo'
+updateRepoDir = 'UpdateRepo'
 
 module.exports = (robot) ->
+  updateRepoDir = robot.name + updateRepoDir
+
   srcWords = '(source|src|remote|from|sources|srcs|remotes)'
   addPrefix = "(add\\s+update\\s+#{srcWords}|update\\s+#{srcWords}\\s+add|update\\s+add\\s+#{srcWords})"
   namePart = '([^\\/\\s]+)'
@@ -37,12 +41,27 @@ module.exports = (robot) ->
   robot.respond regex(updatePrefix, pathPart),         (res) -> updateFrom(robot, res, null, path2https(res.match[4]))
   robot.respond regex(updatePrefix, sshPart),          (res) -> updateFrom(robot, res, null, ssh2https(res.match[6]))
   robot.respond regex(updatePrefix, httpsPart),        (res) -> updateFrom(robot, res, null, res.match[4])
-  
+
+  process.on 'exit', (code) ->
+    pendingUpdate = PendingUpdate.load(robot)
+    return unless pendingUpdate
+    robot.messageRoom pendingUpdate.room, "<@#{pendingUpdate.username}>: 我需要先关闭一下自己."
+
+  robot.brain.on 'loaded', =>
+    pendingUpdate = PendingUpdate.load(robot)
+    return unless pendingUpdate
+    pendingUpdate.finish(robot)
+    currentCommit = currentCommitHash()
+    return if currentCommit is pendingUpdate.commit
+    url = pendingUpdate.urlName(robot)
+    from = pendingUpdate.commitName()
+    to = pendingUpdate.commitName(currentCommit)
+    robot.messageRoom pendingUpdate.room, "<@#{pendingUpdate.username}>: 我更新成功了. \n> From `#{from}` to `#{to}` on `#{url}` "
 
 updateFrom = (robot, res, name, url) -> 
   if !process.env.OPENSHIFT_APP_NAME
     res.reply "貌似我现在不在 OpenShift 上."
-    # return
+    return
   if !name and !url
     urls = getUpdateUrls(robot)
     if urls.length == 0
@@ -96,6 +115,13 @@ reallyDoUpdate = (robot, res, name, url) ->
   if options.env.OPENSHIFT_APP_NAME and options.env.HOME
     gitRepoPath = options.env.HOME + '/git/' + options.env.OPENSHIFT_APP_NAME + '.git'
   options.env.GIT_REPO_PATH = gitRepoPath
+
+  pendingUpdate = null
+  currentCommit = currentCommitHash()
+  if currentCommit
+    pendingUpdate = new PendingUpdate(res.message.user.room, res.message.user.name, url, currentCommit)
+    pendingUpdate.save(robot)
+
   log = '```'
   logMsg = robot.lastSentMsg(res.send(log))
   p = exec "sh #{updateScript}", options, (err, stdout, stderr) ->
@@ -103,6 +129,7 @@ reallyDoUpdate = (robot, res, name, url) ->
     delete options.env.UPDATE_URL
     delete options.env.UPDATE_DIR
     delete options.env.GIT_REPO_PATH
+    pendingUpdate.finish(robot) if pendingUpdate
     console.log "DEPLOY: update err: #{err}, stdout: #{stdout}, stderr: #{stderr}"
     m = "#{user}: 从 `#{represent}` 更新成功"
     if err
@@ -114,6 +141,7 @@ reallyDoUpdate = (robot, res, name, url) ->
     else
       res.send m
   writeLog = (data) ->
+    robot.logger.info "DEPLOY: #{data}"
     if logMsg
       log += data
       logMsg.updateMessage(log + ' ```')
@@ -215,6 +243,82 @@ ssh2https = (url) ->
 path2https = (path) ->
   return "https://github.com/#{path}.git"
 
+currentCommitHash = () ->
+  options = {
+    env: process.env
+    cwd: updateCwd
+    timeout: 1 * 1000
+  }
+  gitRepoPath = updateCwd + '.git'
+  if options.env.OPENSHIFT_APP_NAME and options.env.HOME
+    gitRepoPath = options.env.HOME + '/git/' + options.env.OPENSHIFT_APP_NAME + '.git'
+  branch = options.env.OPENSHIFT_DEPLOYMENT_BRANCH 
+  branch = 'master' unless branch
+  headRef = "refs/heads/#{branch}"
+  try
+    result = execSync "git ls-remote -h #{gitRepoPath}", options
+    result = result.toString() if typeof result isnt 'string'
+    for line in result.split(/\r\n|[\n\v\f\r\x85\u2028\u2029]/)
+      elements = line.split(/\s+/)
+      elements = (el for el in elements when el.trim().length > 0)
+      if elements.length > 0
+        ref = el for el in elements when el.trim() is headRef.trim()
+        return elements[0] if ref
+  catch e
+    console.log "DEPLOY: current commit hash error #{e}"
+  return null
+
 regex = (parts...) ->
   s = parts.join('\\s+')
   return new RegExp("#{s}\\s*$", 'i')
+
+class PendingUpdate
+  constructor: (@room, @username, @url, @commit) ->
+    if typeof @room == 'object' and @room.hasOwnProperty('room')
+      @username = @room.username
+      @url = @room.url
+      @commit = @room.commit
+      @room = @room.room
+
+  isOnGithub: () ->
+    return PendingUpdate.isOnGithub @url
+
+  @isOnGithub: (url)->
+    return url.indexOf('https://github.com') == 0
+
+  commitName: (commit) ->
+    commit = @commit unless commit
+    return PendingUpdate.commitName @url, commit
+
+  urlName: (robot) ->
+    return @url unless robot.brain.data
+    urls = getUpdateUrls(robot)
+    return "<#{urls[i].url}|#{urls[i].name}>" for i in [0..(urls.length - 1)] when urls[i].url is @url
+    return @url
+
+  save: (robot) ->
+    robot.logger.info "DEPLOY: save penddingUpdate #{@room} #{@username} #{@url} #{@commit}"
+    if robot.brain.data
+      robot.brain.data.pendingUpdate = {
+        room: @room,
+        username: @username,
+        url: @url,
+        commit: @commit
+      }
+
+  finish: (robot) ->
+    if robot.brain.data
+      robot.brain.data.pendingUpdate = null
+
+  @load: (robot) ->
+    if robot.brain.data and robot.brain.data.pendingUpdate
+      return new PendingUpdate robot.brain.data.pendingUpdate
+    return null
+
+  @commitName : (url, commit) ->
+    if PendingUpdate.isOnGithub url
+      url = url.replace(/\.git[\/]?$/, '')
+      url = url + '/commit/' + commit
+      return "<#{url}|#{commit.substring(0, 7)}>"
+    return commit.substring(0, 7)
+
