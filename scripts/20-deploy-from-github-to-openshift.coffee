@@ -293,7 +293,7 @@ class PendingUpdate
   urlName: (robot) ->
     return "`#{@url}`" unless robot.brain.data
     urls = getUpdateUrls(robot)
-    return "<#{urls[i].url}|#{urls[i].name}>" for i in [0..(urls.length - 1)] when urls[i].url is @url
+    return "<#{urls[i].url} | #{urls[i].name}>" for i in [0..(urls.length - 1)] when urls[i].url is @url
     return "`#{@url}`"
 
   save: (robot) ->
@@ -320,6 +320,6 @@ class PendingUpdate
     if PendingUpdate.isOnGithub url
       url = url.replace(/\.git[\/]?$/, '')
       url = url + '/commit/' + commit
-      return "<#{url}|#{commit.substring(0, 7)}>"
+      return "<#{url} | #{commit.substring(0, 7)}>"
     return "`#{commit.substring(0, 7)}`" 
 
