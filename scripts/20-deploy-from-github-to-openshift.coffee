@@ -56,7 +56,7 @@ module.exports = (robot) ->
     url = pendingUpdate.urlName(robot)
     from = pendingUpdate.commitName()
     to = pendingUpdate.commitName(currentCommit)
-    robot.messageRoom pendingUpdate.room, "<@#{pendingUpdate.username}>: 我更新成功了. \n> From `#{from}` to `#{to}` on `#{url}` "
+    robot.messageRoom pendingUpdate.room, "<@#{pendingUpdate.username}>: 我更新成功了. \n> From ` #{from} ` to ` #{to} ` on ` #{url} ` "
 
 updateFrom = (robot, res, name, url) -> 
   if !process.env.OPENSHIFT_APP_NAME
