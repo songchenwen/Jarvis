@@ -47,9 +47,21 @@ module.exports = (robot) ->
     return unless pendingUpdate
     robot.messageRoom pendingUpdate.room, "<@#{pendingUpdate.username}>: 我需要先关闭一下自己."
 
+  brainLoaded = false
+  clientConnected = false
   robot.brain.on 'loaded', =>
+    brainLoaded = true
+    checkPendingUpdate()
+
+  robot.adapter.on 'connected', =>
+    clientConnected = true
+    checkPendingUpdate()
+
+  checkPendingUpdate = () ->
+    return unless brainLoaded and clientConnected
     pendingUpdate = PendingUpdate.load(robot)
     return unless pendingUpdate
+    robot.logger.info "DEPLOY: found a pending update #{pendingUpdate.commit.substring(0, 7)}"
     pendingUpdate.finish(robot)
     currentCommit = currentCommitHash()
     if currentCommit is pendingUpdate.commit
