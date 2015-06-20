@@ -315,6 +315,7 @@ class PendingUpdate
         url: @url,
         commit: @commit
       }
+      robot.brain.save()
 
   finish: (robot) ->
     robot.logger.info "DEPLOY: finish pendingUpdate #{@room} #{@username} #{@url} #{@commit}"
