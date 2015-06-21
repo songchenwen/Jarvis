@@ -1,3 +1,17 @@
+# Description:
+#  Update Slack Hubot on Openshift from a Github repo
+#
+# Dependencies:
+#   "hubot-redis-brain":"0.0.3"
+#
+# Commands:
+#   hubot add update source [name] <repo> - add an update source
+#   hubot remove update source [name] [repo] - remove an update source
+#   hubot list update source - list all update sources
+#   hubot update [from repo] - update hubot now
+#
+# Author:
+#   songchenwen
 
 cp = require('child_process')
 exec = cp.exec
