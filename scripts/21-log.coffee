@@ -28,6 +28,13 @@ module.exports = (robot) ->
       res.reply '呃。。。看来我没有被部署到 Openshift 上啊'
       return
 
+    if logging
+      if res.message.user.room is res.message.user.name        
+        res.reply "我正在为 <@#{res.message.user.name}> 输出日志呢"
+      else
+        res.reply "我正在 ##{res.message.user.room} 为 <@#{res.message.user.name}> 输出日志呢"
+      return
+
     robot.logger.info "LOG: max log message length #{maxMsgLength}"
 
     options = {
@@ -36,7 +43,7 @@ module.exports = (robot) ->
     }
 
     msg = null
-    history = ''
+    history = '```------- LOG -------'
 
     logging = exec "sh #{logScript}", options
       
@@ -46,13 +53,13 @@ module.exports = (robot) ->
       res.reply '我停止输出日志了'
 
     logging.stdout.on 'data', (data) ->
-      if history.length + data.length > maxMsgLength
+      if history.length + data.length > maxMsgLength - 4
         msg = null
-        history = ''
+        history = '```------- LOG -------'
 
       history += data
       if msg
-        msg.updateMessage history
+        msg.updateMessage history + ' ```'
       else
         msg = robot.lastSentMsg(res.send(history))
 
