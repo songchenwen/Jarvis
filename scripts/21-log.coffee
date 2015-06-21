@@ -13,6 +13,7 @@
 
 cp = require('child_process')
 exec = cp.exec
+psTree = require('ps-tree')
 
 logScript = "#{__dirname}/../src/log.sh"
 clearLogScript = "#{__dirname}/../src/clear-log.sh"
@@ -72,13 +73,13 @@ module.exports = (robot) ->
 
   robot.respond /stop\s+log[s]?(\s+(here|me))?\s*/i, (res) ->
     if logging
-      robot.logger.info 'stoping logging'
-      logging.kill('SIGKILL')
+      robot.logger.info 'LOG: stoping logging'
+      kill(logging.pid)
 
   robot.respond /clear\s+log[s]?\s*/i, (res) ->
     if logging
-      robot.logger.info 'stoping logging'
-      logging.kill('SIGKILL')
+      robot.logger.info 'LOG: stoping logging'
+      kill(logging.pid)
     if !process.env.OPENSHIFT_NODEJS_LOG_DIR
       res.reply '呃。。。看来我没有被部署到 Openshift 上啊'
       return
@@ -89,3 +90,27 @@ module.exports = (robot) ->
     exec "sh #{clearLogScript}", options, (err, stdout, stderr) ->
       res.reply '我把日志清空了'
       robot.logger.info "LOG: clear log err:#{err}, stdout:#{stdout}, stderr:#{stderr}"
+
+kill = (pid, signal, callback) ->
+  signal   = signal || 'SIGKILL'
+  callback = callback || () ->
+  killTree = true;
+  if(killTree) 
+    psTree(pid, (err, children) ->
+      [pid].concat(
+        children.map (p) ->
+          return p.PID;
+      ).forEach((tpid) ->
+        try 
+         process.kill(tpid, signal)
+        catch ex
+      )
+      callback()
+    )
+  else 
+    try 
+      process.kill(pid, signal) 
+    catch ex
+    callback()
+  
+
