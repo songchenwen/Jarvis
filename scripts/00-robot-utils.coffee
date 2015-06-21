@@ -48,7 +48,6 @@ module.exports = (robot) ->
       return null unless client
       channel = client.getChannelGroupOrDMByName channelName
       return null unless channel
-      rawMsg.unfurl_links = true
       return robot.lastSentMsg channel.postMessage rawMsg
     else
       return null

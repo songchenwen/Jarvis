@@ -15,12 +15,11 @@ cp = require('child_process')
 exec = cp.exec
 
 logScript = "#{__dirname}/../src/log.sh"
+clearLogScript "#{__dirname}/../src/clear-log.sh"
 
 module.exports = (robot) ->
 
   maxMsgLength = 4000
-  if robot.isSlack()
-    maxMsgLength = robot.adapter.MAX_MESSAGE_LENGTH
 
   logging = null
 
@@ -39,8 +38,11 @@ module.exports = (robot) ->
     msg = null
     history = ''
 
-    logging = exec "sh #{logScript}", options, (err, stdout, stderr)->
+    logging = exec "sh #{logScript}", options
+      
+    logging.on 'exit', (code)->
       logging = null
+      history = ''
       res.reply '我停止输出日志了'
 
     logging.stdout.on 'data', (data) ->
@@ -56,6 +58,7 @@ module.exports = (robot) ->
 
   robot.respond /stop\s+log[s]?(\s+(here|me))?\s*/i, (res) ->
     if logging
+      robot.logger.info 'stoping logging'
       logging.kill()
 
   robot.respond /clear\s+log[s]?\s*/i, (res) ->
@@ -68,6 +71,6 @@ module.exports = (robot) ->
       env: process.env
       cwd: process.env.OPENSHIFT_NODEJS_LOG_DIR
     }
-    exec "rm -f *.log", options, (err, stdout, stderr) ->
-      robot.logger.info "LOG: clear log err:#{err}, stdout:#{stdout}, stderr:#{stderr}"
+    exec "sh #{clearLogScript}", options, (err, stdout, stderr) ->
       res.reply '我把日志清空了'
+      robot.logger.info "LOG: clear log err:#{err}, stdout:#{stdout}, stderr:#{stderr}"
