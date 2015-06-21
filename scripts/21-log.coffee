@@ -20,7 +20,6 @@ clearLogScript = "#{__dirname}/../src/clear-log.sh"
 module.exports = (robot) ->
 
   maxMsgLength = 4000
-
   logging = null
 
   robot.respond /(start\s+)?log[s]?(\s+(here|me))?\s*/i, (res) ->
@@ -42,26 +41,26 @@ module.exports = (robot) ->
       cwd: process.env.OPENSHIFT_NODEJS_LOG_DIR
     }
 
-    msg = null
-    history = '```------- LOG -------'
+    history = '```------- LOG -------\n'
+    msg = robot.lastSentMsg(res.send(history + ' ```'))
 
     logging = exec "sh #{logScript}", options
       
     logging.on 'exit', (code)->
       logging = null
-      history = ''
+      history = '```------- LOG ------\n'
       res.reply '我停止输出日志了'
 
     logging.stdout.on 'data', (data) ->
       if history.length + data.length > maxMsgLength - 4
         msg = null
-        history = '```------- LOG -------'
+        history = '```------- LOG ------\n'
 
       history += data
       if msg
         msg.updateMessage history + ' ```'
       else
-        msg = robot.lastSentMsg(res.send(history))
+        msg = robot.lastSentMsg(res.send(history + ' ```'))
 
   robot.respond /stop\s+log[s]?(\s+(here|me))?\s*/i, (res) ->
     if logging
