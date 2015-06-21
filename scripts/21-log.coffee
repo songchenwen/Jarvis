@@ -15,7 +15,7 @@ cp = require('child_process')
 exec = cp.exec
 
 logScript = "#{__dirname}/../src/log.sh"
-clearLogScript "#{__dirname}/../src/clear-log.sh"
+clearLogScript = "#{__dirname}/../src/clear-log.sh"
 
 module.exports = (robot) ->
 
