@@ -1,5 +1,7 @@
 #!/bin/bash
 
 FILES=$(ls *.log)
-rm -f $FILES
-touch $FILES
+for f in ${FILES[@]}
+do
+	echo "" > $f
+done
