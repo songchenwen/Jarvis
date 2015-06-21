@@ -46,9 +46,10 @@ module.exports = (robot) ->
 
     logging = exec "sh #{logScript}", options
       
-    logging.on 'exit', (code)->
+    logging.on 'exit', (code, sig)->
       logging = null
       history = '```------- LOG ------\n'
+      robot.logger.info "LOG: log exit with code: #{code}, sig: #{sig}"
       res.reply '我停止输出日志了'
 
     logging.stdout.on 'data', (data) ->
@@ -62,14 +63,21 @@ module.exports = (robot) ->
       else
         msg = robot.lastSentMsg(res.send(history + ' ```'))
 
+    logging.stdout.on 'close', () ->
+      robot.logger.info 'LOG: loging stdout close' 
+    logging.stdout.on 'error', () ->
+      robot.logger.info 'LOG: loging stdout error'
+    logging.stdout.on 'end', () ->
+      robot.logger.info 'LOG: loging stdout end'
+
   robot.respond /stop\s+log[s]?(\s+(here|me))?\s*/i, (res) ->
     if logging
       robot.logger.info 'stoping logging'
-      logging.kill()
+      logging.kill('SIGINT')
 
   robot.respond /clear\s+log[s]?\s*/i, (res) ->
     if logging
-      logging.kill()
+      logging.kill('SIGINT')
     if !process.env.OPENSHIFT_NODEJS_LOG_DIR
       res.reply '呃。。。看来我没有被部署到 Openshift 上啊'
       return
