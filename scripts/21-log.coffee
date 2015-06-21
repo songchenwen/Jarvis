@@ -73,12 +73,12 @@ module.exports = (robot) ->
   robot.respond /stop\s+log[s]?(\s+(here|me))?\s*/i, (res) ->
     if logging
       robot.logger.info 'stoping logging'
-      logging.kill()
+      logging.kill('SIGKILL')
 
   robot.respond /clear\s+log[s]?\s*/i, (res) ->
     if logging
       robot.logger.info 'stoping logging'
-      logging.kill()
+      logging.kill('SIGKILL')
     if !process.env.OPENSHIFT_NODEJS_LOG_DIR
       res.reply '呃。。。看来我没有被部署到 Openshift 上啊'
       return
